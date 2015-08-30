@@ -1,0 +1,3 @@
+user='aeniw'
+pass='martin'
+dir='./torrents/'
