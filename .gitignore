@@ -1,9 +1,11 @@
-CMakeCache.txt
-CMakeFiles
-Makefile
-cmake_install.cmake
 install_manifest.txt
 
 # Debug files
 *.idea/
 
+Ambi-Light/app/ambi.so
+Ambi-Light/app/loader.so
+Template/app/loader.so
+Template/app/template.so
+Virtual-Usb-Emulator/bin/
+cmake-build-debug/
