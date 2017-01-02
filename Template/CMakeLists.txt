@@ -30,6 +30,7 @@ else ()
             ${SOURCE_DIR}/log.h ${SOURCE_DIR}/log.c)
     set_target_properties(template PROPERTIES PREFIX "")
     target_link_libraries(template
+            ${LIBRARY_DIR}/libSDL.a
             ${LIBRARY_DIR}/libSDL_image.a
             ${LIBRARY_DIR}/libSDL_ttf.a
             ${LIBRARY_DIR}/libjpeg.a        # SDL_image dependency
