@@ -9,6 +9,7 @@ script:
   - export PROJECTS="Ambi-Light Virtual-Usb-Emulator Template"
   - for PROJECT in ${PROJECTS}; do
       cd ${PROJECT} && make;
+      cd ..;
    done
 
 before_deploy:
