@@ -37,7 +37,7 @@ typedef struct DriveNode_s DriveNode;
 typedef struct {
     DriveNode *drives;
     bool drivesLock;
-    uint size, mSize;
+    unsigned int size, mSize;
 } Drives;
 
 DriveNode *addNode(Drives *d, char *mnt, char *name) {
@@ -135,7 +135,10 @@ int writeM(char *mess) {
     char *myfifo = FIFO;
     /* create the FIFO (named pipe) */
     fd = open(myfifo, O_WRONLY);
-    write(fd, mess, strlen(mess));
+    if (write(fd, mess, strlen(mess)) < 0) {
+        close(fd);
+        return -1;
+    }
     close(fd);
     return 0;
 }
@@ -180,7 +183,7 @@ void uMountDrive(char *mnt) {
     if (log == NULL)
         return;
     FILE *tmp = fopen(USB_LOG_TMP, "w");
-    uint lineL = 100, deleted = 0;
+    unsigned int lineL = 100, deleted = 0;
     char line[lineL];
     while (fgets(line, lineL, log) != NULL) {
         if (strstr(line, mnt) != NULL)
@@ -200,7 +203,7 @@ bool isMounted(char *name) {
     FILE *log = fopen(USB_LOG, "r");
     if (log == NULL)
         return false;
-    uint lineL = 100;
+    unsigned int lineL = 100;
     char line[lineL];
     while (fgets(line, lineL, log) != NULL) {
         if (strstr(line, name) != NULL)
@@ -230,7 +233,7 @@ void *daemonM() {
                 while (drives.drivesLock)
                     sleep(1);
                 drives.drivesLock = true;
-                uint count = 0, split = 0;
+                unsigned int count = 0, split = 0;
                 while (buf[count] != ' ') {
                     cmd[count] = buf[count];
                     count++;

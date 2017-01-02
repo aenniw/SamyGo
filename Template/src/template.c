@@ -125,7 +125,7 @@ void injection(int a, int key, int arg_r2) {
     // CAUTION! Do not add/modify code here... or modify injection indexes in loader
 
     // [0][1] gcc should put "STMFD SP!, {R4,LR}" and "MOV R4,[R1]" here
-    asm volatile(
+    __asm__ volatile(
     "STMFD   SP!, {R0,R2,R3,R12}\n"        // [2] store some registers
     );
 
@@ -133,7 +133,7 @@ void injection(int a, int key, int arg_r2) {
     button_pressed(key);                // [3][4] calling local function with key variable in R0, returning R0
 
     // then, prepare for calling and call previous injection function
-    asm volatile(
+    __asm__ volatile(
     "MOV     R1, R0\n"            // [5] remapped keycode
             "MOV     R6, R0\n"            // [6] remapped keycode
             "LDMFD   SP!, {R0,R2,R3,R12}\n"        // [7] restore registers stored before

@@ -15,7 +15,7 @@ static void cacheflush(void *start, size_t size) {
     // This syscall is supported by all 2.4 and 2.6 Linux kernels.  2.2 linux
     // kernels got first support with version 2.2.18.
 
-    asm("mov r0, %0\n"
+    __asm__("mov r0, %0\n"
             "mov r1, %1\n"
             "mov r2, #0\n"
             // EABI or Thumb syscall: syscall number passed in 'r7' (syscall base
