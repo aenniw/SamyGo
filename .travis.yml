@@ -1,21 +1,21 @@
 before_install:
   - sudo apt-get -qq update
-  - sudo apt-get install -qq -y arm-linux-gnueabi-gcc zip
+  - sudo apt-get install -qq -y gcc-arm-linux-gnueabi zip
 
 os: linux
 language: c
 script:
   - cmake ./CMakeLists.txt
   - export PROJECTS="Ambi-Light Virtual-Usb-Emulator Template"
-  - for PROJECT in ${PROJECTS}; do \
-      cd ${PROJECT} && make || exit 255; \
+  - for PROJECT in ${PROJECTS}; do
+      cd ${PROJECT} && make;
    done
 
 before_deploy:
-  - for PROJECT in ${PROJECTS}; do \
-      test -d ${PROJECT}/app/ && \
-        zip -r ${PROJECT}/${PROJECT}.zip ${PROJECT}/app/ || \
-        zip -r ${PROJECT}/${PROJECT}.zip ${PROJECT}/bin/; \
+  - for PROJECT in ${PROJECTS}; d
+      test -d ${PROJECT}/app/ &&
+        zip -r ${PROJECT}/${PROJECT}.zip ${PROJECT}/app/ ||
+        zip -r ${PROJECT}/${PROJECT}.zip ${PROJECT}/bin/;
    done
   - export APP_AMBI="Ambi-Light/Ambi-Light.zip"
   - export APP_VUSB="Virtual-Usb-Emulator/Virtual-Usb-Emulator.zip"
