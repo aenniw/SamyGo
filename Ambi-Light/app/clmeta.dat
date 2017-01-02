@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<contentlibrary>
+  <contentpack id="Ambi">
+    <category>Game</category>
+    <title language_id="English">Ambi</title>
+    <startpoint language_id="English">./loader.so</startpoint>
+    <thumbnailpath>./ambi.png</thumbnailpath>
+    <totalsize>1</totalsize>
+  </contentpack>
+</contentlibrary>
