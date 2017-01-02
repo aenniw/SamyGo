@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 2.5)
 project(Template)
 
 #set(DEBUG_BUILD true)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -Wall -std=c11")
 set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 if (DEBUG_BUILD)

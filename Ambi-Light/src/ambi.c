@@ -1,4 +1,3 @@
-#include <SDL/SDL.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -34,7 +33,7 @@ static const unsigned int HEIGHT = 1080;
 static const unsigned int WIDTH_SECTORS = 10;
 static const unsigned int HEIGHT_SECTORS = 8;
 volatile static int exit_routine = 0, active = 0;
-static struct sockaddr_in serveraddr;
+static struct sockaddr_in serveraddr = {0};
 
 int fd = -1;
 unsigned char *mm_base = NULL;
@@ -177,7 +176,6 @@ void *ambi_routine(void *unused __attribute__ ((unused))) {
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) return NULL;
     fcntl(sock, F_SETFL, O_NONBLOCK | fcntl(sock, F_GETFL, 0));
-    bzero(&serveraddr, sizeof(serveraddr));
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_port = htons(AMBI_PORT);
     serveraddr.sin_addr.s_addr = htonl(stoa(AMBI_IP));
