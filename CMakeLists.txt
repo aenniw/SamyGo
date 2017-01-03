@@ -7,4 +7,5 @@ set(LIBRARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 
 add_subdirectory(Ambi-Light)
 add_subdirectory(Virtual-Usb-Emulator)
+add_subdirectory(VNC-Client)
 add_subdirectory(Template)
