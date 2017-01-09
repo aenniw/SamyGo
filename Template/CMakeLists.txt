@@ -7,12 +7,11 @@ set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 if (DEBUG_BUILD)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
+    find_package(SDL)
     add_executable(template_debug ${SOURCE_DIR}/template.c
             ${SOURCE_DIR}/log.h ${SOURCE_DIR}/log.c)
     TARGET_LINK_LIBRARIES(template_debug SDL SDL_ttf SDL_image)
 else ()
-    set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../include)
-    set(LIBRARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../lib)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/app)
 
     set(CMAKE_C_COMPILER arm-linux-gnueabi-gcc)
@@ -34,8 +33,8 @@ else ()
             ${LIBRARY_DIR}/libSDL_ttf.a
             ${LIBRARY_DIR}/libjpeg.a        # SDL_image dependency
             ${LIBRARY_DIR}/libpng.a         # SDL_image dependency
-            ${LIBRARY_DIR}/libtiff.a         # SDL_image dependency
-            ${LIBRARY_DIR}/libz.a         # SDL_image dependency
+            ${LIBRARY_DIR}/libtiff.a        # SDL_image dependency
+            ${LIBRARY_DIR}/libz.a           # SDL_image dependency
             ${LIBRARY_DIR}/libfreetype.a    # SDL_ttf dependency
             )
 endif ()

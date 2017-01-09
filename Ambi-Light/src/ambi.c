@@ -91,7 +91,8 @@ static int spIDp_DumpImage_samples(unsigned int hDp, int sock) {
     const uint32_t sample_size = HEIGHT / 32, pixel_skip = 3,
             h_size = HEIGHT / HEIGHT_SECTORS, w_size = WIDTH / WIDTH_SECTORS,
             pixels_per_sector =
-            ((HEIGHT / HEIGHT_SECTORS) / pixel_skip) * ((WIDTH / WIDTH_SECTORS) / pixel_skip);
+            (((HEIGHT - 2 * sample_size) / HEIGHT_SECTORS) *
+             ((WIDTH - 2 * sample_size) / WIDTH_SECTORS)) / pixel_skip;
     for (int s = 0; s < WIDTH_SECTORS; s++) {
         uint32_t samples[2][3] = {0};
         uint8_t color[5] = {0};
