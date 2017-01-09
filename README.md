@@ -18,8 +18,8 @@ sudo apt-get install libsdl1.2-dev libsdl-image1.2-dev libsdl-ttf2.0-dev
 ## Build
 ```
 cmake ./CMakeLists.txt
-for PROJECT in $(ls ./); do \
-    cd ${PROJECT} && make || exit 255; \
+for PROJECT in $(ls -d ./*/); do \
+    cd ${PROJECT} && make; cd ..; \
 done
 ```
 
