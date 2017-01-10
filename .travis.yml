@@ -3,6 +3,7 @@ before_install:
   - sudo apt-get install -qq -y gcc-arm-linux-gnueabi zip
 
 os: linux
+dist: trusty
 language: c
 script:
   - cmake ./CMakeLists.txt
