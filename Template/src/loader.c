@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <dlfcn.h>
 #include <sys/mman.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
 
 #include "log.h"
 
@@ -118,7 +121,16 @@ void injector(const char *path) {
 int Game_Main(const char *path, const char *udn __attribute__ ((unused))) {
     debug("Game_Main() started");
     injector(path);        // load, configure and inject our code leaving it in memory
-    if (_Game_Main_ != NULL) return _Game_Main_(path, udn);
+    if (_Game_Main_ != NULL) {
+        char old_path[256];
+        if (getcwd(old_path, sizeof(old_path)) == NULL) strcpy(old_path, "/mtd_exe/");
+        chdir(path);
+        setenv("HOME", path, 1);
+        int return_code = _Game_Main_(path, udn);
+        chdir(old_path);
+        setenv("HOME", old_path, 1);
+        return return_code;
+    }
     return 1;
 }
 
