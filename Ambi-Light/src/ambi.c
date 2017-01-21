@@ -7,31 +7,31 @@
 #include "buttons.h"
 #include "common.h"
 
-#define AMBI_IP "192.168.43.30"
+#define AMBI_IP "192.168.43.10"
 #define AMBI_PORT 65000
 #define FF_MMAP_SIZE 0x800000
 #define DP_INST0 0
 #define DP_ON 1
 
-#define get_a(w, h) mm_base[ ((h) * WIDTH + w) * 4 + 3 + offsetb ]
 #define get_r(w, h) mm_base[ ((h) * WIDTH + w) * 4 + 2 + offsetb ]
 #define get_g(w, h) mm_base[ ((h) * WIDTH + w) * 4 + 1 + offsetb ]
 #define get_b(w, h) mm_base[ ((h) * WIDTH + w) * 4 + offsetb ]
 
-#define sample_a(w, h, s) samples[s][3] += get_a(w,h)
 #define sample_r(w, h, s) samples[s][2] += get_r(w,h)
 #define sample_g(w, h, s) samples[s][1] += get_g(w,h)
 #define sample_b(w, h, s) samples[s][0] += get_b(w,h)
 
 #define sample_pixel(w, h, s) sample_r(w,h,s); sample_g(w,h,s); sample_b(w,h,s)
 #define avg_pixel(s, v) color[2] = samples[s][2] / (v); color[3] = samples[s][1] / (v); color[4] = samples[s][0] / (v)
-#define send_pixel(p, s) color[1] = p; sendto(sock, color, 5, 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr))
+#define send_pixel(p) color[1] = p; sendto(sock, color, 5, 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr))
+#define flush_pixel() sendto(sock, redraw, 5, 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr))
 
 
 static const unsigned int WIDTH = 1920;
 static const unsigned int HEIGHT = 1080;
-static const unsigned int WIDTH_SECTORS = 10;
-static const unsigned int HEIGHT_SECTORS = 8;
+static const unsigned int WIDTH_SECTORS = 60;
+static const unsigned int HEIGHT_SECTORS = 34;
+static const uint8_t redraw[5] = {0, 0, 0, 0, 0};
 volatile static int exit_routine = 0, active = 0;
 static struct sockaddr_in serveraddr = {0};
 
@@ -58,12 +58,12 @@ static int spIDp_DumpImage_samples(unsigned int hDp, int sock) {
         modIncapt_GetActiveVSize(0, &activeVSize);
         //debug("_DVr(DEBUG): got ActiveVSize=%d\n", activeVSize);
         modIncapt_SetActiveVSize(0, 0);
-        OsaWait(0x11);
+        //OsaWait(0x11);
         lldDp_Ve_Burst3216(1);
         lldDp_Ve_SetDumpAddress(dp_baddr);
         lldDp_Ve_CapPos(DP_ON);
         lldDp_Ve_WrCapOn(1);
-        OsaWait(0x11);
+        //OsaWait(0x11);
         modIncapt_SetActiveVSize(0, activeVSize);
 
 
@@ -88,13 +88,11 @@ static int spIDp_DumpImage_samples(unsigned int hDp, int sock) {
     int offsetb = mtmp1 * mtmp2 * 4;
     //debug("_DVr(DEBUG): offset1=%d offset2=%d bytes=%d", mtmp1, mtmp2, offsetb);
 
-    const uint32_t sample_size = HEIGHT / 32, pixel_skip = 3,
-            h_size = HEIGHT / HEIGHT_SECTORS, w_size = WIDTH / WIDTH_SECTORS,
-            pixels_per_sector =
-            (((HEIGHT - 2 * sample_size) / HEIGHT_SECTORS) *
-             ((WIDTH - 2 * sample_size) / WIDTH_SECTORS)) / pixel_skip;
+    const long sample_size = HEIGHT / 32, pixel_skip = 5,
+            h_size = HEIGHT / HEIGHT_SECTORS, w_size = WIDTH / WIDTH_SECTORS;
+    long pixels_per_sector = sample_size * ((WIDTH - 2 * sample_size) / WIDTH_SECTORS) / pixel_skip;
     for (int s = 0; s < WIDTH_SECTORS; s++) {
-        uint32_t samples[2][3] = {0};
+        long long samples[2][3] = {0};
         uint8_t color[5] = {0};
         for (int w = sample_size + w_size * s;
              w < WIDTH - sample_size && w < sample_size + w_size * (s + 1); w += pixel_skip) {
@@ -104,12 +102,14 @@ static int spIDp_DumpImage_samples(unsigned int hDp, int sock) {
             }
         }
         avg_pixel(0, pixels_per_sector);
-        send_pixel(2 * WIDTH_SECTORS + HEIGHT_SECTORS - s, 0);
+        send_pixel(1 + s);
         avg_pixel(1, pixels_per_sector);
-        send_pixel(s + 1, 1);
+        send_pixel(2 * WIDTH_SECTORS + HEIGHT_SECTORS - s);
     }
+    flush_pixel();
+    pixels_per_sector = sample_size * ((HEIGHT - 2 * sample_size) / HEIGHT_SECTORS) / pixel_skip;
     for (int s = 0; s < HEIGHT_SECTORS; s++) {
-        uint32_t samples[2][3] = {0};
+        long long samples[2][3] = {0};
         uint8_t color[5] = {0};
         for (int h = sample_size + h_size * s;
              h < HEIGHT - sample_size && h < sample_size + h_size * (s + 1); h += pixel_skip) {
@@ -119,17 +119,17 @@ static int spIDp_DumpImage_samples(unsigned int hDp, int sock) {
             }
         }
         avg_pixel(0, pixels_per_sector);
-        send_pixel(WIDTH_SECTORS + HEIGHT_SECTORS - s, 0);
+        send_pixel(2 * (WIDTH_SECTORS + HEIGHT_SECTORS) - s);
         avg_pixel(1, pixels_per_sector);
-        send_pixel(2 * WIDTH_SECTORS + HEIGHT_SECTORS + s + 1, 1);
+        send_pixel(WIDTH_SECTORS + s + 1);
     }
+    flush_pixel();
     return 0;
 }
 
 static int button_pressed(int key) __attribute__ ((noinline));
 
 static int button_pressed(const int key) {
-    debug("Button pressed 0x%04X", key);
     if (key == KEY_COL_GREEN) {
         active = 1;
         return KEY_NOTHING;
@@ -180,8 +180,6 @@ void *ambi_routine(void *unused __attribute__ ((unused))) {
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_port = htons(AMBI_PORT);
     serveraddr.sin_addr.s_addr = htonl(stoa(AMBI_IP));
-    debug("Socket %s:%d binded", AMBI_IP, AMBI_PORT);
-
     unsigned int hDp = 0;
     int retv = spIDp_Open(DP_INST0, &hDp);
     if (retv != 0 || hDp == 0) {

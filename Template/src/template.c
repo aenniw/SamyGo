@@ -46,14 +46,20 @@ static void _sdl_del(void) {
 }
 
 static int InitSDL(SDL_Surface **screen) {
-    if (SDL_Init(SDL_INIT_VIDEO) < 0 || TTF_Init() < 0 || IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG | IMG_INIT_TIF) < 0)
+    if (SDL_Init(SDL_INIT_VIDEO) < 0 || TTF_Init() < 0 || IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG | IMG_INIT_TIF) < 0) {
+        debug("Error initialize libs");
         return 1;
+    }
     SDL_EnableUNICODE(0x1);
     SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
-    if (!(*screen = SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP, 0)))
+    if (!(*screen = SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP, 0))) {
+        debug("Error creating screen");
         return 2;
-    if (!(font = TTF_OpenFont("shadow.ttf", 14)))
+    }
+    if (!(font = TTF_OpenFont("shadow.ttf", 16))) {
+        debug("Error opening font");
         return 3;
+    }
     SDL_FillRect(*screen, &(SDL_Rect) {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT}, SDL_MapRGB((*screen)->format, 45, 56, 74));
     SDL_Flip(*screen);
     return 0;
