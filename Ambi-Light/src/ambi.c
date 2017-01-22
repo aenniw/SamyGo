@@ -7,36 +7,33 @@
 #include "buttons.h"
 #include "common.h"
 
+#define WIDTH_SECTORS 60
+#define HEIGHT_SECTORS  34
 #define AMBI_IP "192.168.43.10"
 #define AMBI_PORT 65000
 #define FF_MMAP_SIZE 0x800000
 #define DP_INST0 0
 #define DP_ON 1
 
-#define get_r(w, h) mm_base[ ((h) * WIDTH + w) * 4 + 2 + offsetb ]
-#define get_g(w, h) mm_base[ ((h) * WIDTH + w) * 4 + 1 + offsetb ]
-#define get_b(w, h) mm_base[ ((h) * WIDTH + w) * 4 + offsetb ]
+#define get_r(w, h) mm_base[ ((h) * WIDTH + (w)) * 4 + 2 + offsetb ]
+#define get_g(w, h) mm_base[ ((h) * WIDTH + (w)) * 4 + 1 + offsetb ]
+#define get_b(w, h) mm_base[ ((h) * WIDTH + (w)) * 4 + offsetb ]
 
 #define sample_r(w, h, s) samples[s][2] += get_r(w,h)
 #define sample_g(w, h, s) samples[s][1] += get_g(w,h)
 #define sample_b(w, h, s) samples[s][0] += get_b(w,h)
 
 #define sample_pixel(w, h, s) sample_r(w,h,s); sample_g(w,h,s); sample_b(w,h,s)
-#define avg_pixel(s, v) color[2] = samples[s][2] / (v); color[3] = samples[s][1] / (v); color[4] = samples[s][0] / (v)
-#define send_pixel(p) color[1] = p; sendto(sock, color, 5, 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr))
-#define flush_pixel() sendto(sock, redraw, 5, 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr))
-
+#define avg_pixel(s, v, p) colors[0 + 3*(p)] = samples[s][2] / (v); colors[1 + 3*(p)] = samples[s][1] / (v); colors[2 + 3*(p)] = samples[s][0] / (v)
 
 static const unsigned int WIDTH = 1920;
 static const unsigned int HEIGHT = 1080;
-static const unsigned int WIDTH_SECTORS = 60;
-static const unsigned int HEIGHT_SECTORS = 34;
-static const uint8_t redraw[5] = {0, 0, 0, 0, 0};
 volatile static int exit_routine = 0, active = 0;
 static struct sockaddr_in serveraddr = {0};
 
 int fd = -1;
 unsigned char *mm_base = NULL;
+static uint8_t colors[6 * (WIDTH_SECTORS + HEIGHT_SECTORS)];
 
 static int spIDp_DumpImage_samples(unsigned int hDp, int sock) {
     int activeVSize = 0;
@@ -51,23 +48,16 @@ static int spIDp_DumpImage_samples(unsigned int hDp, int sock) {
         dp_baddr += 0x1FFFF;
         dp_baddr >>= 17;
         dp_baddr <<= 17;
-        //debug("_DVr(DEBUG): alligned DP mem base: 0x%08X", dp_baddr);
 
-        //lldDpTmgStillOn1(1);
-        //OsaWait(0x11);
         modIncapt_GetActiveVSize(0, &activeVSize);
-        //debug("_DVr(DEBUG): got ActiveVSize=%d\n", activeVSize);
         modIncapt_SetActiveVSize(0, 0);
-        //OsaWait(0x11);
         lldDp_Ve_Burst3216(1);
         lldDp_Ve_SetDumpAddress(dp_baddr);
         lldDp_Ve_CapPos(DP_ON);
         lldDp_Ve_WrCapOn(1);
-        //OsaWait(0x11);
         modIncapt_SetActiveVSize(0, activeVSize);
 
-
-        fd = open("/dev/mem", O_RDONLY | O_SYNC);
+        fd = open("/dev/mem", O_RDONLY | O_NONBLOCK);
         if (fd < 0) {
             debug("_DVr(ERROR): /dev/mem device open failed");
             return (-1);
@@ -86,14 +76,13 @@ static int spIDp_DumpImage_samples(unsigned int hDp, int sock) {
     int mtmp2 = *(ptmpr2 + (0xC / 4));
     int mtmp1 = *(ptmpr1 + (8 / 4));
     int offsetb = mtmp1 * mtmp2 * 4;
-    //debug("_DVr(DEBUG): offset1=%d offset2=%d bytes=%d", mtmp1, mtmp2, offsetb);
 
     const long sample_size = HEIGHT / 32, pixel_skip = 5,
             h_size = HEIGHT / HEIGHT_SECTORS, w_size = WIDTH / WIDTH_SECTORS;
     long pixels_per_sector = sample_size * ((WIDTH - 2 * sample_size) / WIDTH_SECTORS) / pixel_skip;
     for (int s = 0; s < WIDTH_SECTORS; s++) {
         long long samples[2][3] = {0};
-        uint8_t color[5] = {0};
+        // FIXME: for some reason mem reading needs to be stopped 2 pixel-sectors before end, otherwise application crashes
         for (int w = sample_size + w_size * s;
              w < WIDTH - sample_size && w < sample_size + w_size * (s + 1); w += pixel_skip) {
             for (int h = 0; h < sample_size; h += pixel_skip) {
@@ -101,16 +90,13 @@ static int spIDp_DumpImage_samples(unsigned int hDp, int sock) {
                 sample_pixel(w, h + HEIGHT - sample_size, 1);
             }
         }
-        avg_pixel(0, pixels_per_sector);
-        send_pixel(1 + s);
-        avg_pixel(1, pixels_per_sector);
-        send_pixel(2 * WIDTH_SECTORS + HEIGHT_SECTORS - s);
+        avg_pixel(0, pixels_per_sector, s);
+        avg_pixel(1, pixels_per_sector, 2 * WIDTH_SECTORS + HEIGHT_SECTORS - s - 1);
     }
-    flush_pixel();
     pixels_per_sector = sample_size * ((HEIGHT - 2 * sample_size) / HEIGHT_SECTORS) / pixel_skip;
     for (int s = 0; s < HEIGHT_SECTORS; s++) {
         long long samples[2][3] = {0};
-        uint8_t color[5] = {0};
+        // FIXME: for some reason mem reading needs to be stopped 1 pixel-sectors before end, otherwise application crashes
         for (int h = sample_size + h_size * s;
              h < HEIGHT - sample_size && h < sample_size + h_size * (s + 1); h += pixel_skip) {
             for (int w = 0; w < sample_size; w += pixel_skip) { //LEFT
@@ -118,28 +104,33 @@ static int spIDp_DumpImage_samples(unsigned int hDp, int sock) {
                 sample_pixel(w + WIDTH - sample_size, h, 1);
             }
         }
-        avg_pixel(0, pixels_per_sector);
-        send_pixel(2 * (WIDTH_SECTORS + HEIGHT_SECTORS) - s);
-        avg_pixel(1, pixels_per_sector);
-        send_pixel(WIDTH_SECTORS + s + 1);
+        avg_pixel(0, pixels_per_sector, 2 * (WIDTH_SECTORS + HEIGHT_SECTORS) - s - 1);
+        avg_pixel(1, pixels_per_sector, WIDTH_SECTORS + s);
     }
-    flush_pixel();
+    sendto(sock, colors, 6 * (WIDTH_SECTORS + HEIGHT_SECTORS), 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr));
     return 0;
 }
 
 static int button_pressed(int key) __attribute__ ((noinline));
 
 static int button_pressed(const int key) {
-    if (key == KEY_COL_GREEN) {
-        active = 1;
-        return KEY_NOTHING;
-    }
-    if (key == KEY_COL_RED) {
-        active = 0;
-        return KEY_NOTHING;
-    }
-    if (key == KEY_POWER) {
-        exit_routine = 1;
+    switch (key) {
+        case KEY_COL_GREEN:
+            if (active == 0) {
+                active = 1;
+                return KEY_NOTHING;
+            }
+            break;
+        case KEY_COL_YELLOW:
+            if (active != 0) {
+                active = 0;
+                return KEY_NOTHING;
+            }
+            break;
+        case KEY_BEZEL_POWER:
+        case KEY_POWER:
+            exit_routine = 1;
+            break;
     }
     return (key);        // return destination button code to be processed by exeDSP
 }
