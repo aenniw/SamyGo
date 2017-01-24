@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
+import Tkinter
+import select
 import socket
 import struct
-import time
-import select
-import Tkinter
 from PIL import ImageTk, Image
 
 UDP_IP = "0.0.0.0"
@@ -25,35 +24,26 @@ def get_color(c):
 def generate_pixels(C, w, h):
     w_size = (1920 / 2 - 2 * 1080 / 64) / w
     h_size = (1080 / 2 - 2 * 1080 / 64) / h
-    pizel_count = 1
     # LOWER
     for i in range(w, 0, -1):
         pixels.append(
             C.create_rectangle(1080 / 64 + (i - 1) * w_size, (1080 / 2) - (1080 / 64), 1080 / 64 + i * w_size,
                                1080 / 2,
                                fill=get_color(0xFF00FF)))
-        #C.create_text(1080 / 64 + (i - 1) * w_size + 50, 1080 / 2 - 8, text=pizel_count.__str__(), fill="white")
-        pizel_count += 1
     # LEFT
     for i in range(h, 0, -1):
         pixels.append(
             C.create_rectangle(0, 1080 / 64 + (i - 1) * h_size, 1080 / 64, 1080 / 64 + i * h_size,
                                fill=get_color(0xFF00FF)))
-        #C.create_text(8, 1080 / 64 + (i - 1) * h_size + 30, text=pizel_count.__str__(), fill="white")
-        pizel_count += 1
     # UPPER
     for i in range(0, w):
         pixels.append(C.create_rectangle(1080 / 64 + i * w_size, 0, 1080 / 64 + (i + 1) * w_size, 1080 / 64,
                                          fill=get_color(0xFF00FF)))
-        #C.create_text(1080 / 64 + i * w_size + 50, 10, text=pizel_count.__str__(), fill="white")
-        pizel_count += 1
     # RIGHT
     for i in range(0, h):
         pixels.append(
             C.create_rectangle(1920 / 2 - 1080 / 64, 1080 / 64 + i * h_size, 1920 / 2, 1080 / 64 + (i + 1) * h_size,
                                fill=get_color(0xFF00FF)))
-        #C.create_text(1920 / 2 - 8, 1080 / 64 + i * h_size + 30, text=pizel_count.__str__(), fill="white")
-        pizel_count += 1
 
 
 if __name__ == '__main__':
@@ -79,7 +69,8 @@ if __name__ == '__main__':
         ready = select.select([sock], [], [], 0.01)
         if ready[0]:
             data, addr = sock.recvfrom(5)
-            data = struct.unpack('!5B', data)
+            data = struct.unpack('!{}B'.format(6 * (WIDTH + HEIGHT)), data)
             print("received message:", data)
-            C.itemconfig(pixels[(data[0] << 8) | data[1] - 1], fill=get_color_(data[2], data[3], data[4]))
+            for p in range(0, 2 * (WIDTH * HEIGHT)):
+                C.itemconfig(p, fill=get_color_(data[p * 3], data[1 + p * 3], data[2 + p * 3]))
     exit(0)
