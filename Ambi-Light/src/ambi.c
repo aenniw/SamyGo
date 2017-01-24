@@ -60,7 +60,7 @@ static int spIDp_DumpImage_samples(unsigned int hDp, int sock) {
         fd = open("/dev/mem", O_RDONLY | O_NONBLOCK);
         if (fd < 0) {
             debug("_DVr(ERROR): /dev/mem device open failed");
-            return (-1);
+            return -1;
         }
         if (mm_base == NULL)mm_base = mmap(0, FF_MMAP_SIZE, PROT_READ, MAP_SHARED, fd, dp_baddr);
         if (mm_base == (void *) -1) {
@@ -77,35 +77,33 @@ static int spIDp_DumpImage_samples(unsigned int hDp, int sock) {
     int mtmp1 = *(ptmpr1 + (8 / 4));
     int offsetb = mtmp1 * mtmp2 * 4;
 
-    const long sample_size = HEIGHT / 32, pixel_skip = 5,
-            h_size = HEIGHT / HEIGHT_SECTORS, w_size = WIDTH / WIDTH_SECTORS;
+    const long sample_size = 30, pixel_skip = 5,
+            h_size = (HEIGHT - 2 * sample_size) / HEIGHT_SECTORS, w_size = (WIDTH - 2 * sample_size) / WIDTH_SECTORS;
     long pixels_per_sector = sample_size * ((WIDTH - 2 * sample_size) / WIDTH_SECTORS) / pixel_skip;
     for (int s = 0; s < WIDTH_SECTORS; s++) {
         long long samples[2][3] = {0};
-        // FIXME: for some reason mem reading needs to be stopped 2 pixel-sectors before end, otherwise application crashes
         for (int w = sample_size + w_size * s;
-             w < WIDTH - sample_size && w < sample_size + w_size * (s + 1); w += pixel_skip) {
+             w < sample_size + w_size * (s + 1); w += pixel_skip) {
             for (int h = 0; h < sample_size; h += pixel_skip) {
-                sample_pixel(w, h, 0);
-                sample_pixel(w, h + HEIGHT - sample_size, 1);
+                sample_pixel(w, h, 0); // bottom
+                sample_pixel(w, h + HEIGHT - sample_size, 1); // top
             }
         }
-        avg_pixel(0, pixels_per_sector, s);
-        avg_pixel(1, pixels_per_sector, 2 * WIDTH_SECTORS + HEIGHT_SECTORS - s - 1);
+        avg_pixel(0, pixels_per_sector, s); // bottom
+        avg_pixel(1, pixels_per_sector, 2 * WIDTH_SECTORS + HEIGHT_SECTORS - s - 1); // top
     }
     pixels_per_sector = sample_size * ((HEIGHT - 2 * sample_size) / HEIGHT_SECTORS) / pixel_skip;
     for (int s = 0; s < HEIGHT_SECTORS; s++) {
         long long samples[2][3] = {0};
-        // FIXME: for some reason mem reading needs to be stopped 1 pixel-sectors before end, otherwise application crashes
         for (int h = sample_size + h_size * s;
-             h < HEIGHT - sample_size && h < sample_size + h_size * (s + 1); h += pixel_skip) {
-            for (int w = 0; w < sample_size; w += pixel_skip) { //LEFT
-                sample_pixel(w, h, 0);
-                sample_pixel(w + WIDTH - sample_size, h, 1);
+             h < sample_size + h_size * (s + 1); h += pixel_skip) {
+            for (int w = 0; w < sample_size; w += pixel_skip) {
+                sample_pixel(w, h, 0); // right
+                sample_pixel(w + WIDTH - sample_size, h, 1); // left
             }
         }
-        avg_pixel(0, pixels_per_sector, 2 * (WIDTH_SECTORS + HEIGHT_SECTORS) - s - 1);
-        avg_pixel(1, pixels_per_sector, WIDTH_SECTORS + s);
+        avg_pixel(0, pixels_per_sector, 2 * (WIDTH_SECTORS + HEIGHT_SECTORS) - s - 1); // right
+        avg_pixel(1, pixels_per_sector, WIDTH_SECTORS + s); // left
     }
     sendto(sock, colors, 6 * (WIDTH_SECTORS + HEIGHT_SECTORS), 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr));
     return 0;
@@ -187,8 +185,8 @@ void *ambi_routine(void *unused __attribute__ ((unused))) {
         }
     }
     close(sock);
-    munmap(mm_base, FF_MMAP_SIZE);
-    close(fd);
+    if (mm_base != NULL) munmap(mm_base, FF_MMAP_SIZE);
+    if (fd >= 0) close(fd);
     retv = spIDp_Close(hDp);
     if (retv != 0) debug("DEBUG(_CF): ERROR: spIDp_Close() return=0x%08X", retv);
     debug("routine end");
