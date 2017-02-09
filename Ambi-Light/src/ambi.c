@@ -2,15 +2,13 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <netdb.h>
+#include <inih/ini.h>
+#include <string.h>
 
 #include "externs.h"
 #include "buttons.h"
 #include "common.h"
 
-#define WIDTH_SECTORS 60
-#define HEIGHT_SECTORS  34
-#define AMBI_IP "192.168.43.10"
-#define AMBI_PORT 65000
 #define FF_MMAP_SIZE 0x800000
 #define DP_INST0 0
 #define DP_ON 1
@@ -26,6 +24,7 @@
 #define sample_pixel(w, h, s) sample_r(w,h,s); sample_g(w,h,s); sample_b(w,h,s)
 #define avg_pixel(s, v, p) colors[0 + 3*(p)] = samples[s][2] / (v); colors[1 + 3*(p)] = samples[s][1] / (v); colors[2 + 3*(p)] = samples[s][0] / (v)
 
+static configuration config = {0, 0, 0, NULL};
 static const unsigned int WIDTH = 1920;
 static const unsigned int HEIGHT = 1080;
 volatile static int exit_routine = 0, active = 0;
@@ -33,7 +32,7 @@ static struct sockaddr_in serveraddr = {0};
 
 int fd = -1;
 unsigned char *mm_base = NULL;
-static uint8_t colors[6 * (WIDTH_SECTORS + HEIGHT_SECTORS)];
+static uint8_t *colors;
 
 static int spIDp_DumpImage_samples(unsigned int hDp, int sock) {
     int activeVSize = 0;
@@ -78,9 +77,10 @@ static int spIDp_DumpImage_samples(unsigned int hDp, int sock) {
     int offsetb = mtmp1 * mtmp2 * 4;
 
     const long sample_size = 30, pixel_skip = 5,
-            h_size = (HEIGHT - 2 * sample_size) / HEIGHT_SECTORS, w_size = (WIDTH - 2 * sample_size) / WIDTH_SECTORS;
-    long pixels_per_sector = sample_size * ((WIDTH - 2 * sample_size) / WIDTH_SECTORS) / pixel_skip;
-    for (int s = 0; s < WIDTH_SECTORS; s++) {
+            h_size = (const long) ((HEIGHT - 2 * sample_size) / config.pixels_h), w_size = (const long) (
+            (WIDTH - 2 * sample_size) / config.pixels_w);
+    long pixels_per_sector = (long) (sample_size * ((WIDTH - 2 * sample_size) / config.pixels_w) / pixel_skip);
+    for (int s = 0; s < config.pixels_w; s++) {
         long long samples[2][3] = {0};
         for (int w = sample_size + w_size * s;
              w < sample_size + w_size * (s + 1); w += pixel_skip) {
@@ -90,10 +90,10 @@ static int spIDp_DumpImage_samples(unsigned int hDp, int sock) {
             }
         }
         avg_pixel(0, pixels_per_sector, s); // bottom
-        avg_pixel(1, pixels_per_sector, 2 * WIDTH_SECTORS + HEIGHT_SECTORS - s - 1); // top
+        avg_pixel(1, pixels_per_sector, 2 * config.pixels_w + config.pixels_h - s - 1); // top
     }
-    pixels_per_sector = sample_size * ((HEIGHT - 2 * sample_size) / HEIGHT_SECTORS) / pixel_skip;
-    for (int s = 0; s < HEIGHT_SECTORS; s++) {
+    pixels_per_sector = (long) (sample_size * ((HEIGHT - 2 * sample_size) / config.pixels_h) / pixel_skip);
+    for (int s = 0; s < config.pixels_h; s++) {
         long long samples[2][3] = {0};
         for (int h = sample_size + h_size * s;
              h < sample_size + h_size * (s + 1); h += pixel_skip) {
@@ -102,10 +102,11 @@ static int spIDp_DumpImage_samples(unsigned int hDp, int sock) {
                 sample_pixel(w + WIDTH - sample_size, h, 1); // left
             }
         }
-        avg_pixel(0, pixels_per_sector, 2 * (WIDTH_SECTORS + HEIGHT_SECTORS) - s - 1); // right
-        avg_pixel(1, pixels_per_sector, WIDTH_SECTORS + s); // left
+        avg_pixel(0, pixels_per_sector, 2 * (config.pixels_w + config.pixels_h) - s - 1); // right
+        avg_pixel(1, pixels_per_sector, config.pixels_w + s); // left
     }
-    sendto(sock, colors, 6 * (WIDTH_SECTORS + HEIGHT_SECTORS), 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr));
+    sendto(sock, colors, 6 * (config.pixels_w + config.pixels_h), 0, (struct sockaddr *) &serveraddr,
+           sizeof(serveraddr));
     return 0;
 }
 
@@ -159,21 +160,33 @@ void injection(int a, int key, int arg_r2) {
     // and that's all; the rest (returning to exeDSP) is already programmed in the first injected function
 }
 
-void *ambi_routine(void *__attribute__ ((unused))) __attribute__ ((noinline));
+void *ambi_routine(void *) __attribute__ ((noinline));
 
-void *ambi_routine(void *unused __attribute__ ((unused))) {
+void *ambi_routine(void *path) {
+    debug("loading config %s", (char *) path);
+    if (!chdir(path) && ini_parse(CONFIG_FILE, parse_config, &config) < 0) {
+        debug("Can't load '%s'", CONFIG_FILE);
+        return 0;
+    }
+    debug("config loaded from '%s': ip=%s, port=%d, w, h=[%d, %d]", CONFIG_FILE, config.ip, config.port,
+          config.pixels_w, config.pixels_h);
     debug("routine started");
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) return NULL;
     fcntl(sock, F_SETFL, O_NONBLOCK | fcntl(sock, F_GETFL, 0));
     serveraddr.sin_family = AF_INET;
-    serveraddr.sin_port = htons(AMBI_PORT);
-    serveraddr.sin_addr.s_addr = htonl(stoa(AMBI_IP));
+    serveraddr.sin_port = htons(config.port);
+    serveraddr.sin_addr.s_addr = htonl(stoa(config.ip));
     unsigned int hDp = 0;
     int retv = spIDp_Open(DP_INST0, &hDp);
     if (retv != 0 || hDp == 0) {
         debug("DEBUG(_CF): ERROR: spIDp_Open() ret=%d\n hDp=0x%08X", retv, hDp);
-        return NULL;
+        return 0;
+    }
+    colors = malloc(sizeof(uint8_t) * (6 * (config.pixels_h + config.pixels_w)));
+    if (!colors) {
+        debug("Cannot malloc buffer for colors");
+        return 0;
     }
     while (!exit_routine) {
         if (active) {
@@ -185,6 +198,7 @@ void *ambi_routine(void *unused __attribute__ ((unused))) {
         }
     }
     close(sock);
+    free(colors);
     if (mm_base != NULL) munmap(mm_base, FF_MMAP_SIZE);
     if (fd >= 0) close(fd);
     retv = spIDp_Close(hDp);

@@ -15,6 +15,7 @@ set_target_properties(loader PROPERTIES PREFIX "")
 
 add_library(ambi SHARED
         ${SOURCE_DIR}/ambi.c
+        ${INCLUDE_DIR}/inih/ini.c
         ${SOURCE_DIR}/common.h ${SOURCE_DIR}/common.c
         ${SOURCE_DIR}/externs.h ${SOURCE_DIR}/buttons.h)
 set_target_properties(ambi PROPERTIES PREFIX "")
