@@ -8,18 +8,18 @@ Content Library applications for [Samsung LE46B650](http://www.samsung.com/cz/co
 [**Wiki**](https://wiki.samygo.tv/index.php5?title=Main_Page) / 
 [**Forum**](https://forum.samygo.tv/viewforum.php?f=11&sid=04ff6f8cfb73bf6dd4755dd96e95cf73)
 
-## Setup enviroment
+## Setup environment
 ```
 sudo apt-get update
-sudo apt-get install gcc-arm-linux-gnueabi cmake
+sudo apt-get install gcc-arm-linux-gnueabi cmake make
 sudo apt-get install libsdl1.2-dev libsdl-image1.2-dev libsdl-ttf2.0-dev
 ```
 
 ## Build
 ```
 cmake ./CMakeLists.txt
-for PROJECT in $(ls -d ./*/); do \
-    cd ${PROJECT} && make; cd ..; \
+for PROJECT in $(ls -d ./*/CMakeLists.txt); do \
+    cd ${PROJECT%*/*} && ls; cd ..; \
 done
 ```
 
