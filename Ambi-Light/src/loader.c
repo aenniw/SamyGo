@@ -2,6 +2,8 @@
 #include <dlfcn.h>
 #include <sys/mman.h>
 #include <pthread.h>
+#include <unistd.h>
+#include <string.h>
 
 #include "common.h"
 
@@ -119,7 +121,7 @@ void injector(const char *path) {
     mprotect((void *) page, 8192, PROT_READ | PROT_EXEC);
 
     pthread_t helper;
-    pthread_create(&helper, NULL, (void *) ex_ambi_routine, NULL);
+    pthread_create(&helper, NULL, (void *) ex_ambi_routine, (void *) path);
     debug("ambi routine started in separate thread:%d", helper);
 
     cacheflush(KeyCommon_SendKeyPressInput + 4, 8);
@@ -129,7 +131,13 @@ void injector(const char *path) {
 
 int Game_Main(const char *path, const char *udn __attribute__ ((unused))) {
     debug("Game_Main() started");
+    char old_path[256];
+    if (getcwd(old_path, sizeof(old_path)) == NULL) strcpy(old_path, "/mtd_exe/");
+    chdir(path);
+    setenv("HOME", path, 1);
     injector(path);        // load, configure and inject our code leaving it in memory
+    chdir(old_path);
+    setenv("HOME", old_path, 1);
     return 1;        // exit loader while injected module stays in memory
 }
 
