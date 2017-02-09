@@ -1,7 +1,7 @@
 # Ambi-Light
 
 Ambi-Light port for Samsung LE46B650 using LAN/WiFi for data transition.
-Led lights are driven by Wemos D1 mini powered by ESP8266 flashed with [Firmware](https://github.com/aenniw/wemos_d1)
+Led lights are driven by Wemos D1 mini powered by ESP8266 flashed with [Firmware](https://github.com/aenniw/wemos_d1/tree/master/Ambi-Light-LE46B650)
 
 Application contains python UI for led setup and application debugging. Refresh rate of whole screen scan is heavily delayed,
 by TV screen memory access and may cause lags when starting or under heavy load. It scans every 3th pixel to sample colors
@@ -15,5 +15,5 @@ Start application by injecting it at startup or by loading it manually from cont
  
 | Button | Function         |
 |:------:|:----------------:|
-| Red    | Start sampling   |
-| Green  | Stop sampling    |
+| Green  | Start sampling   |
+| Yellow | Stop sampling    |
