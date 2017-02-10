@@ -54,7 +54,6 @@ void injector(const char *path) {
 
     dlclose(handle);
 
-    // Load OSDcap library
     sprintf(s, "%sambi.so", path);
     debug("- loading library:");
     debug(s);
@@ -121,7 +120,9 @@ void injector(const char *path) {
     mprotect((void *) page, 8192, PROT_READ | PROT_EXEC);
 
     pthread_t helper;
-    pthread_create(&helper, NULL, (void *) ex_ambi_routine, (void *) path);
+    char *path_heap = malloc(sizeof(char) * (1 + strlen(path)));
+    strcpy(path_heap, path);
+    pthread_create(&helper, NULL, (void *) ex_ambi_routine, (void *) path_heap);
     debug("ambi routine started in separate thread:%d", helper);
 
     cacheflush(KeyCommon_SendKeyPressInput + 4, 8);

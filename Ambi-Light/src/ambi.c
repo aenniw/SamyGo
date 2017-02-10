@@ -164,12 +164,15 @@ void *ambi_routine(void *) __attribute__ ((noinline));
 
 void *ambi_routine(void *path) {
     debug("loading config %s", (char *) path);
-    if (!chdir(path) && ini_parse(CONFIG_FILE, parse_config, &config) < 0) {
+    if (path != NULL) chdir(path);
+    if (ini_parse(CONFIG_FILE, parse_config, &config) < 0) {
         debug("Can't load '%s'", CONFIG_FILE);
-        return 0;
+        return NULL;
     }
-    debug("config loaded from '%s': ip=%s, port=%d, w, h=[%d, %d]", CONFIG_FILE, config.ip, config.port,
+    debug("config loaded from '%s': ip=%s, port=%d, w*h [%d * %d]", CONFIG_FILE, config.ip, config.port,
           config.pixels_w, config.pixels_h);
+    if (config.ip == NULL || config.port == 0 || config.pixels_w == 0 || config.pixels_h == 0) return NULL;
+    free(path);
     debug("routine started");
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) return NULL;
@@ -181,12 +184,12 @@ void *ambi_routine(void *path) {
     int retv = spIDp_Open(DP_INST0, &hDp);
     if (retv != 0 || hDp == 0) {
         debug("DEBUG(_CF): ERROR: spIDp_Open() ret=%d\n hDp=0x%08X", retv, hDp);
-        return 0;
+        return NULL;
     }
     colors = malloc(sizeof(uint8_t) * (6 * (config.pixels_h + config.pixels_w)));
     if (!colors) {
         debug("Cannot malloc buffer for colors");
-        return 0;
+        return NULL;
     }
     while (!exit_routine) {
         if (active) {
@@ -204,5 +207,5 @@ void *ambi_routine(void *path) {
     retv = spIDp_Close(hDp);
     if (retv != 0) debug("DEBUG(_CF): ERROR: spIDp_Close() return=0x%08X", retv);
     debug("routine end");
-    return 0;
+    return NULL;
 }
