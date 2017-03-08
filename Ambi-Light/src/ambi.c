@@ -82,9 +82,8 @@ static int spIDp_DumpImage_samples(unsigned int hDp, int sock) {
     long pixels_per_sector = (long) (sample_size * ((WIDTH - 2 * sample_size) / config.pixels_w) / pixel_skip);
     for (int s = 0; s < config.pixels_w; s++) {
         long long samples[2][3] = {0};
-        for (int w = sample_size + w_size * s;
-             w < sample_size + w_size * (s + 1); w += pixel_skip) {
-            for (int h = 0; h < sample_size; h += pixel_skip) {
+        for (int h = 0; h < sample_size; h += pixel_skip) {
+            for (int w = (h % 2) + sample_size + w_size * s; w < sample_size + w_size * (s + 1); w += pixel_skip) {
                 sample_pixel(w, h, 0); // bottom
                 sample_pixel(w, h + HEIGHT - sample_size, 1); // top
             }
@@ -95,9 +94,8 @@ static int spIDp_DumpImage_samples(unsigned int hDp, int sock) {
     pixels_per_sector = (long) (sample_size * ((HEIGHT - 2 * sample_size) / config.pixels_h) / pixel_skip);
     for (int s = 0; s < config.pixels_h; s++) {
         long long samples[2][3] = {0};
-        for (int h = sample_size + h_size * s;
-             h < sample_size + h_size * (s + 1); h += pixel_skip) {
-            for (int w = 0; w < sample_size; w += pixel_skip) {
+        for (int h = sample_size + h_size * s; h < sample_size + h_size * (s + 1); h += pixel_skip) {
+            for (int w = (h % 2); w < sample_size; w += pixel_skip) {
                 sample_pixel(w, h, 0); // right
                 sample_pixel(w + WIDTH - sample_size, h, 1); // left
             }
