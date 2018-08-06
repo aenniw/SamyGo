@@ -1,0 +1,22 @@
+#!/bin/bash
+
+WORK_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+TARGET_DIR="${WORK_DIR}/target"
+TAG=`cd ${WORK_DIR}; git tag -l --points-at HEAD`
+
+rm -rf ${TARGET_DIR} 2 > /dev/null
+test -d ${TARGET_DIR} || mkdir ${TARGET_DIR}
+
+for DIR in ${WORK_DIR}/*/CMakeLists.txt; do
+    APP=${DIR%/*}; APP=${APP##*/}
+    if [[ -d ${DIR%/*}/app ]]; then
+        zip -rj ${TARGET_DIR}/${APP}${TAG}.zip ${DIR%/*}/app
+    elif [[ -d ${DIR%/*}/bin ]]; then
+        zip -rj ${TARGET_DIR}/${APP}${TAG}-bin.zip ${DIR%/*}/bin
+    else
+        echo "Unknown package dir."
+        exit 1
+    fi
+done
+
+exit

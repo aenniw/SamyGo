@@ -1,0 +1,14 @@
+#!/bin/bash
+
+DOCKER_IMAGE=aenniw/samygo:1.0
+WORKDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+
+if [[ "$(docker images -q ${DOCKER_IMAGE} 2> /dev/null)" == "" ]]; then
+    docker build -t ${DOCKER_IMAGE} - < ${WORKDIR}/Dockerfile
+fi
+
+docker run --rm -v ${WORKDIR}:/workdir \
+    ${DOCKER_IMAGE} \
+    /workdir/$@
+
+exit
