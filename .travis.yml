@@ -1,12 +1,21 @@
-before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -qq -y gcc-arm-linux-gnueabi
-
 os: linux
 dist: trusty
-language: c
+sudo: required
+
+services:
+  - docker
+
 script:
-  - cmake ./CMakeLists.txt
-  - for PROJECT in ./*/CMakeLists.txt; do
-      cd ${PROJECT%*/*} && make && cd ../;
-    done
+  - ./docker make
+  - ./docker package
+
+deploy:
+  provider: releases
+  prerelease: true
+  api_key: ${GH_TOKEN}
+  file_glob: true
+  file: target/*
+  skip_cleanup: true
+  on:
+    tags: true
+    branch: master

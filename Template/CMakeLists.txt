@@ -1,10 +1,9 @@
 cmake_minimum_required(VERSION 2.5)
 project(Template)
 
-#set(DEBUG_BUILD true)
 set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-if (DEBUG_BUILD)
+if (DEBUG)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
     find_package(SDL)
@@ -14,7 +13,6 @@ if (DEBUG_BUILD)
 else ()
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/app)
 
-    set(CMAKE_C_COMPILER arm-linux-gnueabi-gcc)
     include_directories(BEFORE ${INCLUDE_DIR})
     add_library(loader SHARED
             ${SOURCE_DIR}/loader.c
