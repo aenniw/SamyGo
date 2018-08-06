@@ -1,12 +1,13 @@
-before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -qq -y gcc-arm-linux-gnueabi
-
 os: linux
 dist: trusty
-language: c
+
+addons:
+  apt:
+    packages:
+      - make
+      - cmake
+      - gcc-arm-linux-gnueabi
+
 script:
-  - cmake ./CMakeLists.txt
-  - for PROJECT in ./*/CMakeLists.txt; do
-      cd ${PROJECT%*/*} && make && cd ../;
-    done
+  - cmake .
+  - make all
